@@ -22,7 +22,7 @@ public class CrosswalkWebViewPackage implements ReactPackage {
         modules.add(new CrosswalkWebViewManager(reactContext));
         return modules;
     }
-
+	// rn0.47以上废弃
     public List<Class<? extends JavaScriptModule>> createJSModules () {
         return Collections.emptyList();
     }

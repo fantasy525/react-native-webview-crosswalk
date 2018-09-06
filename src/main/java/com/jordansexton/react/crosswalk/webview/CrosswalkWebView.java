@@ -164,26 +164,35 @@ class CrosswalkWebView extends XWalkView implements LifecycleEventListener {
 
         @Override
         public void onLoadFinished (XWalkView view, String url) {
-            ((CrosswalkWebView) view).linkBridge();
-            ((CrosswalkWebView) view).callInjectedJavaScript();
+           if(!url.equals("")){
+               ((CrosswalkWebView) view).linkBridge();
+               ((CrosswalkWebView) view).callInjectedJavaScript();
 
-            XWalkNavigationHistory navigationHistory = view.getNavigationHistory();
-            eventDispatcher.dispatchEvent(
-                new NavigationStateChangeEvent(
-                    getId(),
-                    SystemClock.uptimeMillis(),
-                    view.getTitle(),
-                    false,
-                    url,
-                    navigationHistory.canGoBack(),
-                    navigationHistory.canGoForward()
-                )
-            );
+               XWalkNavigationHistory navigationHistory = view.getNavigationHistory();
+               eventDispatcher.dispatchEvent(
+                   new LoadFinishedEvent(
+                       getId(),
+                       SystemClock.uptimeMillis()
+                   )
+               );
+               eventDispatcher.dispatchEvent(
+                   new NavigationStateChangeEvent(
+                       getId(),
+                       SystemClock.uptimeMillis(),
+                       view.getTitle(),
+                       false,
+                       url,
+                       navigationHistory.canGoBack(),
+                       navigationHistory.canGoForward()
+                   )
+               );
+           }
 
         }
 
         @Override
         public void onLoadStarted (XWalkView view, String url) {
+           if(!url.equals("")){
             XWalkNavigationHistory navigationHistory = view.getNavigationHistory();
             eventDispatcher.dispatchEvent(
                 new NavigationStateChangeEvent(
@@ -196,6 +205,7 @@ class CrosswalkWebView extends XWalkView implements LifecycleEventListener {
                     navigationHistory.canGoForward()
                 )
             );
+        }
         }
 
         @Override
@@ -248,8 +258,12 @@ class CrosswalkWebView extends XWalkView implements LifecycleEventListener {
         }
 
         private void overrideUri (Uri uri) {
-            Intent action = new Intent(Intent.ACTION_VIEW, uri);
-            activity.startActivity(action);
+           try {
+               Intent action = new Intent(Intent.ACTION_VIEW, uri);
+               activity.startActivity(action);
+            } catch (Exception e) {
+                e.printStackTrace();
+           }
         }
     }
 
