@@ -65,6 +65,7 @@ public class CrosswalkWebViewGroupManager extends ViewGroupManager<CrosswalkWebV
 
     @Override
     public CrosswalkWebView createViewInstance (ThemedReactContext context) {
+        //防止多次实例化的爆红bug,是否解决待观察，本身是偶尔出现的
         if(wr!=null&& wr.get()!=null){
             wr.get().onHostDestroy();
         }
