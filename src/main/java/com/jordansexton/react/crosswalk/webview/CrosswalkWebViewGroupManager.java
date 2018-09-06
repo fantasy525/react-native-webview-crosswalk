@@ -15,11 +15,11 @@ import com.facebook.react.common.annotations.VisibleForTesting;
 import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.ViewGroupManager;
 import com.facebook.react.uimanager.annotations.ReactProp;
-
-import org.xwalk.core.XWalkCookieManager;
 import org.xwalk.core.XWalkNavigationHistory;
 import org.xwalk.core.XWalkSettings;
+import org.xwalk.core.XWalkCookieManager;
 import org.xwalk.core.XWalkView;
+
 import org.json.JSONObject;
 import org.json.JSONException;
 
@@ -27,9 +27,10 @@ import com.facebook.react.views.webview.events.TopMessageEvent;
 
 import javax.annotation.Nullable;
 
-
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-
 
 public class CrosswalkWebViewGroupManager extends ViewGroupManager<CrosswalkWebView> {
 
@@ -40,6 +41,8 @@ public class CrosswalkWebViewGroupManager extends ViewGroupManager<CrosswalkWebV
     public static final int RELOAD = 3;
 
     public static final int POST_MESSAGE = 4;
+
+    public static final int LOAD = 5;
 
     @VisibleForTesting
     public static final String REACT_CLASS = "CrosswalkWebView";
@@ -57,25 +60,34 @@ public class CrosswalkWebViewGroupManager extends ViewGroupManager<CrosswalkWebV
         return REACT_CLASS;
     }
 
+    private static WeakReference<CrosswalkWebView> wr;
+    private static int count = 0;
+
     @Override
     public CrosswalkWebView createViewInstance (ThemedReactContext context) {
+        if(wr!=null&& wr.get()!=null){
+            wr.get().onHostDestroy();
+        }
+        CrosswalkWebView crosswalkWebView;
         Activity _activity = reactContext.getCurrentActivity();
-        CrosswalkWebView crosswalkWebView = new CrosswalkWebView(context, _activity);
+        crosswalkWebView = new CrosswalkWebView(context, _activity);
+        wr = new WeakReference<>(crosswalkWebView);
 
         XWalkSettings settings =crosswalkWebView.getSettings();
         settings.setDomStorageEnabled(true);//开启本地存储
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
+        settings.setDatabaseEnabled(true);
+
+        settings.setCacheMode(XWalkSettings.LOAD_CACHE_ELSE_NETWORK);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             settings.setAllowFileAccessFromFileURLs(false);
             setAllowUniversalAccessFromFileURLs(crosswalkWebView, false);
         }
-
         // Fixes broken full-screen modals/galleries due to body height being 0.
         crosswalkWebView.setLayoutParams(
             new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
-
         // 启用cookies
         XWalkCookieManager mCookieManager = new XWalkCookieManager();
         mCookieManager.setAcceptCookie(true);
@@ -123,16 +135,17 @@ public class CrosswalkWebViewGroupManager extends ViewGroupManager<CrosswalkWebV
       setUrl(view, BLANK_URL);
     }
 
+
     @ReactProp(name = "injectedJavaScript")
     public void setInjectedJavaScript (XWalkView view, @Nullable String injectedJavaScript) {
         ((CrosswalkWebView) view).setInjectedJavaScript(injectedJavaScript);
     }
-    // 启用postMessage?
+
     @ReactProp(name = "messagingEnabled")
     public void setMessagingEnabled(XWalkView view, boolean enabled) {
         ((CrosswalkWebView) view).setMessagingEnabled(enabled);
     }
-    // load的url
+
     @ReactProp(name = "url")
     public void setUrl (final CrosswalkWebView view, @Nullable final String url) {
         Activity _activity = reactContext.getCurrentActivity();
@@ -170,7 +183,6 @@ public class CrosswalkWebViewGroupManager extends ViewGroupManager<CrosswalkWebV
     public void setMediaPlaybackRequiresUserAction(XWalkView view, boolean requires) {
         view.getSettings().setMediaPlaybackRequiresUserGesture(requires);
     }
-
     @ReactProp(name = "allowUniversalAccessFromFileURLs")
     public void setAllowUniversalAccessFromFileURLs(XWalkView view, boolean allow) {
         view.getSettings().setAllowUniversalAccessFromFileURLs(allow);
@@ -183,7 +195,6 @@ public class CrosswalkWebViewGroupManager extends ViewGroupManager<CrosswalkWebV
             view.getSettings().setUserAgentString(userAgent);
         }
     }
-
     @ReactProp(name = "scalesPageToFit")
     public void setScalesPageToFit(XWalkView view, boolean enabled) {
         view.getSettings().setUseWideViewPort(!enabled);
@@ -197,7 +208,8 @@ public class CrosswalkWebViewGroupManager extends ViewGroupManager<CrosswalkWebV
             "goBack", GO_BACK,
             "goForward", GO_FORWARD,
             "reload", RELOAD,
-            "postMessage", POST_MESSAGE
+            "postMessage", POST_MESSAGE,
+            "load", LOAD
         );
     }
 
@@ -212,6 +224,9 @@ public class CrosswalkWebViewGroupManager extends ViewGroupManager<CrosswalkWebV
                 break;
             case RELOAD:
                 view.reload(XWalkView.RELOAD_NORMAL);
+                break;
+            case LOAD:
+                view.load(args.getString(0), null);
                 break;
             case POST_MESSAGE:
                 try {
@@ -232,6 +247,8 @@ public class CrosswalkWebViewGroupManager extends ViewGroupManager<CrosswalkWebV
             MapBuilder.of("registrationName", "onCrosswalkWebViewNavigationStateChange"),
             ErrorEvent.EVENT_NAME,
             MapBuilder.of("registrationName", "onCrosswalkWebViewError"),
+            LoadFinishedEvent.EVENT_NAME,
+            MapBuilder.of("registrationName", "onCrosswalkWebViewLoadFinished"),
             ProgressEvent.EVENT_NAME,
             MapBuilder.of("registrationName", "onCrosswalkWebViewProgress"),
             TopMessageEvent.EVENT_NAME,
